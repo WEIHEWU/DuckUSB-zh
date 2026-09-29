@@ -4,9 +4,9 @@ import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 
 enum class NightMode(val flag: Int, val icon: String, val label: String) {
-    FOLLOW(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM, "🌗", "Follow system"),
-    LIGHT(AppCompatDelegate.MODE_NIGHT_NO, "☀️", "Light"),
-    DARK(AppCompatDelegate.MODE_NIGHT_YES, "🌙", "Dark"),
+    FOLLOW(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM, "🌗", "跟随系统"),
+    LIGHT(AppCompatDelegate.MODE_NIGHT_NO, "☀️", "浅色模式"),
+    DARK(AppCompatDelegate.MODE_NIGHT_YES, "🌙", "深色模式"),
     ;
 
     fun next(): NightMode = entries[(ordinal + 1) % entries.size]

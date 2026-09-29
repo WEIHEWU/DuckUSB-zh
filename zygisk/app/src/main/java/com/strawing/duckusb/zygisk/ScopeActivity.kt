@@ -48,9 +48,9 @@ class ScopeActivity : AppCompatActivity() {
 
         container.addView(TextView(this).apply {
             text = if (config.frameworkAllApps) {
-                "\"Cover every app\" is on, so this list is ignored — every app already reads USB debugging as off."
+                "「覆盖所有应用」已开启，此列表已被忽略 — 所有应用读取到的 USB 调试均已关闭。"
             } else {
-                "Ticked apps read USB debugging as off. Nothing is injected into them; the lie is told in system_server."
+                "勾选的应用读取到的 USB 调试状态为关闭。无需向目标应用注入代码，伪装统一在 system_server 中进行。"
             }
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             setTextColor(attr(MR.attr.colorOnSurfaceVariant))
@@ -58,7 +58,7 @@ class ScopeActivity : AppCompatActivity() {
         })
 
         val search = EditText(this).apply {
-            hint = "Search apps"
+            hint = "搜索应用"
             setSingleLine()
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -128,7 +128,7 @@ class ScopeActivity : AppCompatActivity() {
         config.targets = LinkedHashSet(selected)
         val wrote = Root.writeConfig(config) && Root.syncPackages(config)
         if (!wrote) {
-            Toast.makeText(this, "Could not write the module configuration", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "无法写入模块配置", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -147,7 +147,7 @@ class ScopeActivity : AppCompatActivity() {
             val check = row.getChildAt(2) as CheckBox
 
             label.text = entry.label
-            pkg.text = if (entry.system) "${entry.pkg} · system" else entry.pkg
+            pkg.text = if (entry.system) "${entry.pkg} · 系统应用" else entry.pkg
             icon.setImageDrawable(
                 runCatching { packageManager.getApplicationIcon(entry.pkg) }.getOrNull()
             )

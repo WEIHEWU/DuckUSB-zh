@@ -48,7 +48,7 @@ object Updater {
      *   requirement stated rather than silently withheld.
      */
     fun check(currentCode: Long, frameworkApi: Int?): Result {
-        val listing = get(RELEASES) ?: return Result.Failed("releases unreachable")
+        val listing = get(RELEASES) ?: return Result.Failed("无法访问发布列表")
         val tag = try {
             val releases = JSONArray(listing)
             (0 until releases.length())
@@ -59,11 +59,11 @@ object Updater {
                 }
                 ?.optString("tag_name")
         } catch (t: Throwable) {
-            return Result.Failed("bad release listing")
+            return Result.Failed("发布列表解析失败")
         } ?: return Result.UpToDate
 
         val body = get("https://github.com/$REPO/releases/download/$tag/update.json")
-            ?: return Result.Failed("no update.json on $tag")
+            ?: return Result.Failed("$tag 缺少 update.json")
 
         return try {
             val json = JSONObject(body)
@@ -79,7 +79,7 @@ object Updater {
             val url = json.optJSONObject("apk")?.optString("downloadUrl").orEmpty()
             Result.Available(name, url.ifEmpty { "https://github.com/$REPO/releases/tag/$tag" })
         } catch (t: Throwable) {
-            Result.Failed("bad update.json")
+            Result.Failed("update.json 解析失败")
         }
     }
 

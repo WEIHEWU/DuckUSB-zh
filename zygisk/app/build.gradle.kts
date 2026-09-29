@@ -40,6 +40,8 @@ android {
                 storePassword = signStorePassword
                 keyAlias = signKeyAlias
                 keyPassword = signKeyPassword
+                enableV1Signing = true
+                enableV2Signing = true
             }
         }
     }

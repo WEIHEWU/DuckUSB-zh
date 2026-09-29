@@ -145,22 +145,22 @@ class MainActivity : AppCompatActivity() {
         ui.content.removeAllViews()
         when (tab) {
             DuckUi.TAB_BEHAVIOUR -> {
-                ui.content.addView(ui.sectionLabel("Behaviour"))
+                ui.content.addView(ui.sectionLabel("行为设置"))
                 ui.content.addView(controlsCard())
-                ui.content.addView(ui.sectionLabel("Coverage"))
+                ui.content.addView(ui.sectionLabel("覆盖说明"))
                 ui.content.addView(coverageCard())
             }
             DuckUi.TAB_DIAGNOSTICS -> {
-                ui.content.addView(ui.sectionLabel("Diagnostics"))
+                ui.content.addView(ui.sectionLabel("诊断信息"))
                 ui.content.addView(diagnosticsCard())
-                ui.content.addView(ui.sectionLabel("What this app sees vs the device"))
+                ui.content.addView(ui.sectionLabel("当前应用读取值 vs 设备真实值"))
                 ui.content.addView(readingsCard())
             }
             else -> {
                 ui.content.addView(statusCard())
-                ui.content.addView(ui.sectionLabel("Module"))
+                ui.content.addView(ui.sectionLabel("模块信息"))
                 ui.content.addView(infoCard())
-                ui.content.addView(ui.footer("Xposed module · changes to the notification hook apply on reboot"))
+                ui.content.addView(ui.footer("Xposed 模块 · 通知拦截相关的修改需重启生效"))
             }
         }
     }
@@ -174,18 +174,18 @@ class MainActivity : AppCompatActivity() {
             else -> Health.BAD
         }
         val title = when {
-            !frameworkLive() -> "Not active"
-            paused -> "Paused"
-            !flag(Config.KEY_SPOOF, true) -> "Settings spoof is off"
-            else -> "Active — framework mode"
+            !frameworkLive() -> "未激活"
+            paused -> "已暂停"
+            !flag(Config.KEY_SPOOF, true) -> "设置伪装已关闭"
+            else -> "已激活 — 框架模式"
         }
         val detail = when {
-            !frameworkLive() -> "Enable DuckUSB in LSPosed, tick System Framework in its scope, then reboot."
-            paused -> "Everything reads true again. The hook stays loaded until you unpause."
-            !flag(Config.KEY_SPOOF, true) -> "The hook is live but the settings spoof is switched off."
-            else -> "Hook live in system_server, covering every app"
+            !frameworkLive() -> "请在 LSPosed 中启用 DuckUSB，勾选「系统框架 (System Framework)」作用域，然后重启设备。"
+            paused -> "所有项恢复读取真实值。Hook 仍保持加载，取消暂停后立即恢复生效。"
+            !flag(Config.KEY_SPOOF, true) -> "Hook 已就绪，但设置伪装开关已关闭。"
+            else -> "Hook 在 system_server 中正常运行，已覆盖所有应用"
         }
-        return ui.heroCard(title, detail, health, "Pause", paused, true) { checked ->
+        return ui.heroCard(title, detail, health, "暂停", paused, true) { checked ->
             setFlag(Config.KEY_PAUSED, checked)
             renderContent()
         }
@@ -194,17 +194,17 @@ class MainActivity : AppCompatActivity() {
     private fun infoCard(): View {
         val card = ui.outlinedCard()
         val col = ui.column(10, 10)
-        col.addView(ui.infoRow("Module version", appVersion()))
-        col.addView(ui.infoRow("Hook engine", frameworkName() ?: "Xposed"))
-        col.addView(ui.infoRow("System Framework scoped", when (systemScoped()) {
-            true -> "yes"
-            false -> "no"
-            null -> "unknown"
+        col.addView(ui.infoRow("模块版本", appVersion()))
+        col.addView(ui.infoRow("Hook 引擎", frameworkName() ?: "Xposed"))
+        col.addView(ui.infoRow("系统框架作用域", when (systemScoped()) {
+            true -> "已勾选"
+            false -> "未勾选"
+            null -> "未知"
         }))
-        col.addView(ui.infoRow("Hook live", if (frameworkLive()) "yes" else "no"))
-        col.addView(ui.infoRow("Root", if (rootAvailable) "available" else "no"))
-        col.addView(ui.infoRow("Android", "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"))
-        col.addView(ui.infoRow("Device", "${Build.MANUFACTURER} ${Build.MODEL}"))
+        col.addView(ui.infoRow("Hook 生效状态", if (frameworkLive()) "已生效" else "未生效"))
+        col.addView(ui.infoRow("Root 权限", if (rootAvailable) "已获取" else "未获取"))
+        col.addView(ui.infoRow("Android 版本", "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"))
+        col.addView(ui.infoRow("设备型号", "${Build.MANUFACTURER} ${Build.MODEL}"))
         card.addView(col)
         return card
     }
@@ -213,26 +213,26 @@ class MainActivity : AppCompatActivity() {
         val card = ui.outlinedCard()
         val col = ui.column(6, 6)
         col.addView(ui.toggleRow(
-            DuckUi.Icons.usb, "Spoof USB debugging",
-            "adb_enabled · adb_wifi_enabled · Developer Options → 0",
+            DuckUi.Icons.usb, "伪装 USB 调试",
+            "adb_enabled · adb_wifi_enabled · 开发者选项 → 0",
             flag(Config.KEY_SPOOF, true),
         ) { setFlag(Config.KEY_SPOOF, it); renderContent() })
         col.addView(ui.thinDivider())
         col.addView(ui.toggleRow(
-            DuckUi.Icons.query, "Cover the query path",
-            "Also rewrites cursor reads of the settings tables, so a direct query agrees with the getter.",
+            DuckUi.Icons.query, "覆盖 Query 查询路径",
+            "同时重写对设置数据表的游标 (Cursor) 查询，使直接 query 与 getter 结果完全一致。",
             flag(Config.KEY_COVER_QUERY, true),
         ) { setFlag(Config.KEY_COVER_QUERY, it) })
         col.addView(ui.thinDivider())
         col.addView(ui.toggleRow(
-            DuckUi.Icons.notification, "Hide the notification",
-            "Swallows the persistent USB debugging notification. Needs a reboot.",
+            DuckUi.Icons.notification, "隐藏调试通知",
+            "吞掉常驻的「已开启 USB 调试」系统通知。需要重启生效。",
             flag(Config.KEY_HIDE_NOTIF, true),
         ) { setFlag(Config.KEY_HIDE_NOTIF, it) })
         col.addView(ui.thinDivider())
         col.addView(ui.toggleRow(
-            DuckUi.Icons.tag, "Mask the USB config property",
-            "persist.sys.usb.config reads mtp and init.svc.adbd reads stopped, in the property area itself so every read route agrees. adbd keeps running. Reverts on reboot. Needs root.",
+            DuckUi.Icons.tag, "屏蔽 USB 配置属性",
+            "使属性区中的 persist.sys.usb.config 显示为 mtp，init.svc.adbd 显示为 stopped，让所有读取途径保持一致。adbd 仍保持运行。重启后恢复。需要 Root 权限。",
             propMaskInstalled,
         ) { wanted ->
             propMaskInstalled = wanted
@@ -248,7 +248,7 @@ class MainActivity : AppCompatActivity() {
                         propMaskInstalled = !wanted
                         Toast.makeText(
                             this@MainActivity,
-                            "Needs root — grant DuckUSB superuser access, then try again.",
+                            "需要 Root 权限 — 请在授权管理中授予 DuckUSB 超级用户权限，然后重试。",
                             Toast.LENGTH_LONG,
                         ).show()
                     }
@@ -258,8 +258,8 @@ class MainActivity : AppCompatActivity() {
         })
         col.addView(ui.thinDivider())
         col.addView(ui.toggleRow(
-            DuckUi.Icons.allApps, "Mask the USB function list",
-            "sys.usb.config and sys.usb.state read mtp, hiding the adb function itself. Closes detectors that read those directly. system_server's own USB manager believes it too, so leave it off unless you need it.",
+            DuckUi.Icons.allApps, "屏蔽 USB 功能列表",
+            "sys.usb.config 与 sys.usb.state 将读取为 mtp，隐藏 adb 功能本身，防御直接读取这俩属性的检测。system_server 自带的 USB 管理服务也会受影响，除非确有需要否则建议保持关闭。",
             flag(Config.KEY_MASK_USB_STATE, false), rootAvailable,
         ) { wanted ->
             setFlag(Config.KEY_MASK_USB_STATE, wanted)
@@ -272,8 +272,8 @@ class MainActivity : AppCompatActivity() {
         })
         col.addView(ui.thinDivider())
         col.addView(ui.toggleRow(
-            DuckUi.Icons.log, "Verbose log",
-            "One logcat line per spoofed read. Off unless you are investigating.",
+            DuckUi.Icons.log, "详细日志",
+            "每次伪装读取输出一行 logcat 日志。除非排错否则保持关闭。",
             flag(Config.KEY_VERBOSE_LOG, false),
         ) { setFlag(Config.KEY_VERBOSE_LOG, it) })
         col.addView(ui.thinDivider())
@@ -287,18 +287,18 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(0, ui.dp(12), 0, ui.dp(6))
         }
-        row.addView(ui.bodyText(updateLabel ?: "Check GitHub for a newer release."))
-        row.addView(ui.linkRow("Check for updates") {
-            updateLabel = "Checking…"
+        row.addView(ui.bodyText(updateLabel ?: "检查 GitHub 是否有新版本发布。"))
+        row.addView(ui.linkRow("检查更新") {
+            updateLabel = "正在检查…"
             renderContent()
             background {
                 val result = Updater.check(appVersionCode(), frameworkApi())
                 val text = when (result) {
-                    is Updater.Result.Available -> "Version ${result.versionName} is available."
+                    is Updater.Result.Available -> "发现新版本 ${result.versionName} 可用。"
                     is Updater.Result.Blocked ->
-                        "Version ${result.versionName} needs Xposed API ${result.needsApi}; this framework offers ${result.hasApi}."
-                    Updater.Result.UpToDate -> "Up to date."
-                    is Updater.Result.Failed -> "Check failed: ${result.reason}"
+                        "版本 ${result.versionName} 需要 Xposed API ${result.needsApi}；当前框架版本为 ${result.hasApi}。"
+                    Updater.Result.UpToDate -> "已是最新版本。"
+                    is Updater.Result.Failed -> "检查更新失败：${result.reason}"
                 }
                 runOnUiThread { updateLabel = text; renderContent() }
             }
@@ -310,14 +310,14 @@ class MainActivity : AppCompatActivity() {
         val card = ui.outlinedCard()
         val col = ui.column(16, 16)
         col.addView(ui.bodyText(
-            "Every app on the device reads USB debugging as off. The lie is told once in " +
-                "system_server, so nothing is injected into the apps being fooled and there is " +
-                "no scope list to maintain."
+            "设备上的所有应用读取到的 USB 调试状态均为关闭。数据在 " +
+                "system_server 中统一伪装，无需向被欺骗的目标应用注入任何代码，也" +
+                "无需维护作用域名单。"
         ))
         if (systemScoped() == false) {
             col.addView(ui.noteRow(
-                "DuckUSB is not scoped to System Framework, so the hook cannot install. " +
-                    "Tick it in LSPosed and reboot."
+                "DuckUSB 未勾选系统框架 (System Framework) 作用域，Hook 无法注入。" +
+                    "请在 LSPosed 中勾选并重启手机。"
             ))
         }
         card.addView(col)
@@ -331,30 +331,29 @@ class MainActivity : AppCompatActivity() {
         val state = svcState
         if (state == null) {
             col.addView(ui.bodyText(
-                "The system_server service is not answering. Either the module is not enabled, " +
-                    "System Framework is not in its scope, or it has not been through a reboot yet."
+                "system_server 服务未响应。可能是模块未启用、未勾选系统框架作用域，或者安装后尚未重启设备。"
             ))
             card.addView(col)
             return card
         }
-        col.addView(ui.statRow("service version", state.getInt("version").toString()))
-        col.addView(ui.statRow("provider hooks", state.getInt("hookCount").toString()))
-        col.addView(ui.statRow("armed", "${state.getLong("installedAtRealtimeMs") / 1000}s into this boot"))
-        col.addView(ui.statRow("apps spoofed", svcRecords.size.toString()))
+        col.addView(ui.statRow("服务版本", state.getInt("version").toString()))
+        col.addView(ui.statRow("Provider Hook 数", state.getInt("hookCount").toString()))
+        col.addView(ui.statRow("就绪耗时", "开机 ${state.getLong("installedAtRealtimeMs") / 1000} 秒后"))
+        col.addView(ui.statRow("已伪装应用数", svcRecords.size.toString()))
         col.addView(ui.thinDivider())
-        col.addView(ui.expander("Callers lied to since boot (${svcRecords.size})", recordsOpen) {
+        col.addView(ui.expander("开机以来已被伪装的调用方 (${svcRecords.size})", recordsOpen) {
             recordsOpen = !recordsOpen
             prefs.edit()?.putBoolean(PREF_RECORDS_EXPANDED, recordsOpen)?.apply()
             renderContent()
         })
         if (recordsOpen) {
             if (svcRecords.isEmpty()) {
-                col.addView(ui.noteRow("Nothing yet. An app has to read one of the keys first."))
+                col.addView(ui.noteRow("暂无记录。需要有应用读取相应设置项才会触发。"))
             }
             for (record in svcRecords) {
                 col.addView(ui.callerRow(
-                    record.getString("label") ?: "uid ${record.getInt("uid")}",
-                    "${record.getInt("count")}× ${shortKeys(record.getString("keys").orEmpty())}",
+                    record.getString("label") ?: "UID ${record.getInt("uid")}",
+                    "${record.getInt("count")}次 ${shortKeys(record.getString("keys").orEmpty())}",
                 ))
             }
         }
@@ -373,9 +372,8 @@ class MainActivity : AppCompatActivity() {
             col.addView(ui.readingRow(key, systemProperty(key), rootProps[key]))
         }
         col.addView(ui.noteRow(
-            "Left chip is what this app reads, right chip is the real value read in " +
-                "system_server (or by root for the properties). DuckUSB never spoofs itself, so " +
-                "a mismatch here means something else on this device is spoofing this app."
+            "左侧标签为本应用读取到的值，右侧标签为 system_server（或 Root 方式）读取到的系统真实值。" +
+                "DuckUSB 从不对自身进行伪装，因此若两边数值不一致，说明设备上有其它模块/工具正在对本应用进行伪装。"
         ))
         card.addView(col)
         return card

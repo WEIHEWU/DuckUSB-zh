@@ -126,7 +126,7 @@ class DuckUi(private val activity: Activity) {
             text = mode.icon
             gravity = Gravity.CENTER
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-            contentDescription = "Theme: ${mode.label}"
+            contentDescription = "主题: ${mode.label}"
             layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL

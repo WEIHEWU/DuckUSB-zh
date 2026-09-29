@@ -3,7 +3,7 @@ package com.strawing.duckusb.common
 object Config {
     const val PKG = "com.strawing.duckusb.zygisk"
     const val MODULE_ID = "duckusb_zygisk"
-    const val MODULE_VERSION = "2.1.0"
+    const val MODULE_VERSION = "2.1.6"
     const val LIVE_PROPERTY = "duckusb.zygisk.live"
     const val MODULE_DIR = "/data/adb/modules/$MODULE_ID"
     const val MODULE_UPDATE_DIR = "/data/adb/modules_update/$MODULE_ID"
@@ -20,11 +20,16 @@ object Config {
     const val FIRST_APP_UID = 10000
     const val PER_USER_RANGE = 100000
 
-    val SPOOF_KEYS = setOf(
-        "adb_enabled",
-        "adb_wifi_enabled",
-        "development_settings_enabled",
+    val SPOOF_VALUES: Map<String, String> = mapOf(
+        "adb_enabled" to "0",
+        "adb_wifi_enabled" to "0",
+        "development_settings_enabled" to "0",
+        "adb_allowed_connection_time" to "604800000",
+        "verifier_verify_adb_installs" to "1",
+        "stay_on_while_plugged_in" to "0",
     )
+
+    val SPOOF_KEYS: Set<String> = SPOOF_VALUES.keys
 
     val SPARE_PACKAGES: Set<String> = setOf(
         "com.strawing.duckusb",

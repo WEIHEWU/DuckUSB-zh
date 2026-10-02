@@ -30,13 +30,22 @@ object DuckServiceClient {
     }
 
     /** Push the current toggles to system_server. No-op when framework mode isn't live. */
-    fun pushConfig(context: Context, paused: Boolean, spoofSettings: Boolean, hideNotif: Boolean) {
+    fun pushConfig(
+        context: Context,
+        paused: Boolean,
+        spoofSettings: Boolean,
+        hideNotif: Boolean,
+        whitelist: ArrayList<String>? = null,
+    ) {
         val svc = get(context) ?: return
         runCatching {
             svc.pushConfig(Bundle().apply {
                 putBoolean("paused", paused)
                 putBoolean("spoofSettings", spoofSettings)
                 putBoolean("hideNotif", hideNotif)
+                if (whitelist != null) {
+                    putStringArrayList("whitelist", whitelist)
+                }
             })
         }
     }

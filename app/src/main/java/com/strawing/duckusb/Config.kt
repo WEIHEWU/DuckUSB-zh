@@ -16,6 +16,9 @@ object Config {
     /** Spoof adb_enabled / adb_wifi_enabled / development_settings_enabled to scoped apps. */
     const val KEY_SPOOF = "spoof_enabled"
 
+    /** Packages exempted from spoofing (they will see the true USB debugging state). */
+    const val KEY_WHITELIST = "whitelist_packages"
+
     /**
      * Framework mode — EXPERIMENTAL, default OFF. A single hook in System Framework
      * (system_server) on ContentProvider$Transport.call would spoof the adb Settings keys

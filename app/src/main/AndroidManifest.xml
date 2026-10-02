@@ -4,6 +4,9 @@
     <!-- Only for the manual "Check for updates" row. Nothing is fetched on launch, and the
          hook half never touches the network. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission"
+        xmlns:tools="http://schemas.android.com/tools" />
 
     <!--
       A modern (libxposed) module carries NO xposed* meta-data. The framework identifies it
@@ -34,6 +37,11 @@
                 <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".WhitelistActivity"
+            android:exported="false"
+            android:label="白名单设置" />
     </application>
 
 </manifest>

@@ -1,6 +1,7 @@
 package com.strawing.duckusb
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
@@ -124,11 +125,13 @@ class MainActivity : AppCompatActivity() {
     private fun setFlag(key: String, value: Boolean) {
         prefs.edit()?.putBoolean(key, value)?.apply()
         background {
+            val wl = prefs.getStringSet(Config.KEY_WHITELIST, null)?.let { ArrayList(it) }
             DuckServiceClient.pushConfig(
-                this,
+                this@MainActivity,
                 flag(Config.KEY_PAUSED, false),
                 flag(Config.KEY_SPOOF, true),
                 flag(Config.KEY_HIDE_NOTIF, true),
+                wl,
             )
         }
     }
@@ -308,11 +311,17 @@ class MainActivity : AppCompatActivity() {
     private fun coverageCard(): View {
         val card = ui.outlinedCard()
         val col = ui.column(16, 16)
+        val wlCount = prefs.getStringSet(Config.KEY_WHITELIST, null)?.size ?: 0
         col.addView(ui.bodyText(
-            "设备上的所有应用读取到的 USB 调试状态均为关闭。数据在 " +
-                "system_server 中统一伪装，无需向被欺骗的目标应用注入任何代码，也" +
-                "无需维护作用域名单。"
+            if (wlCount > 0) {
+                "当前已设置 $wlCount 个白名单应用（这些应用将正常读取到真实的 USB 调试状态）。其余未在白名单中的所有应用读取 USB 调试均为关闭。"
+            } else {
+                "默认对设备上的所有第三方应用进行伪装（读取 USB 调试均为关闭）。如果你有需要正常使用 USB 调试的开发/调试/管理工具，可在下方添加到白名单。"
+            }
         ))
+        col.addView(ui.linkRow(if (wlCount > 0) "管理白名单应用 ($wlCount 个应用不伪装)" else "设置白名单应用（不隐藏 USB 调试）") {
+            startActivity(Intent(this, WhitelistActivity::class.java))
+        })
         if (systemScoped() == false) {
             col.addView(ui.noteRow(
                 "DuckUSB 未勾选系统框架 (System Framework) 作用域，Hook 无法注入。" +

@@ -207,6 +207,9 @@ class DuckUSBModule : XposedModule() {
                             if (service == null) service = DuckService(ctx).apply {
                                 spoofSettings = spoofOn()
                                 hideNotif = hideNotifOn()
+                                runCatching {
+                                    setInitialWhitelist(prefs.getStringSet(Config.KEY_WHITELIST, null))
+                                }
                             }
                         }
                         hookSettingsProviderCall(provider.javaClass)
@@ -308,6 +311,7 @@ class DuckUSBModule : XposedModule() {
         if (uid % 100000 < FIRST_APP_UID) return false
         service?.callerAppId?.let { if (it >= 0 && uid % 100000 == it) return false }
         if (service?.isSpared(uid) == true) return false
+        if (service?.isWhitelisted(uid) == true) return false
         if (service?.paused ?: pausedOn()) return false
         return service?.spoofSettings ?: spoofOn()
     }
@@ -344,6 +348,7 @@ class DuckUSBModule : XposedModule() {
         // app uids, so the uid<10000 rule above does not cover them, and spoofing them at boot
         // leaves USB stuck on charge-only.
         if (service?.isSpared(uid) == true) return
+        if (service?.isWhitelisted(uid) == true) return
         if (service?.paused ?: pausedOn()) return
         // Live config from the service when it's up (a volatile read), else the prefs path.
         if (!(service?.spoofSettings ?: spoofOn())) return

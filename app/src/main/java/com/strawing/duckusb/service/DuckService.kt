@@ -65,6 +65,43 @@ class DuckService(private val context: Context) : IDuckService.Stub() {
 
     /** uid -> "is OS file-transfer plumbing". Resolved once per uid; the hook path is hot. */
     private val spareCache = android.util.SparseBooleanArray()
+    private val whitelist = java.util.Collections.synchronizedSet(HashSet<String>())
+    private val whitelistCache = android.util.SparseBooleanArray()
+
+    fun setInitialWhitelist(pkgs: Set<String>?) {
+        if (pkgs != null) {
+            synchronized(lock) {
+                whitelist.clear()
+                whitelist.addAll(pkgs)
+                whitelistCache.clear()
+            }
+        }
+    }
+
+    /**
+     * True for callers that are explicitly whitelisted by the user to see real USB debugging.
+     */
+    fun isWhitelisted(uid: Int): Boolean {
+        synchronized(lock) {
+            val i = whitelistCache.indexOfKey(uid)
+            if (i >= 0) return whitelistCache.valueAt(i)
+        }
+        val token = Binder.clearCallingIdentity()
+        var whitelisted = false
+        try {
+            val pkgs = context.packageManager.getPackagesForUid(uid)
+            if (pkgs != null) {
+                synchronized(lock) {
+                    whitelisted = pkgs.any { it in whitelist }
+                }
+            }
+        } catch (_: Throwable) {
+        } finally {
+            Binder.restoreCallingIdentity(token)
+        }
+        synchronized(lock) { whitelistCache.put(uid, whitelisted) }
+        return whitelisted
+    }
 
     /**
      * True for callers that must see the truth even though they sit at an app uid.
@@ -115,6 +152,7 @@ class DuckService(private val context: Context) : IDuckService.Stub() {
             putBoolean("spoofSettings", spoofSettings)
             putBoolean("hideNotif", hideNotif)
             putInt("recordCount", synchronized(lock) { records.size })
+            putInt("whitelistCount", synchronized(lock) { whitelist.size })
         }
     }
 
@@ -125,6 +163,14 @@ class DuckService(private val context: Context) : IDuckService.Stub() {
         if (config.containsKey("paused")) paused = config.getBoolean("paused")
         if (config.containsKey("spoofSettings")) spoofSettings = config.getBoolean("spoofSettings")
         if (config.containsKey("hideNotif")) hideNotif = config.getBoolean("hideNotif")
+        if (config.containsKey("whitelist")) {
+            val list = config.getStringArrayList("whitelist")
+            synchronized(lock) {
+                whitelist.clear()
+                if (list != null) whitelist.addAll(list)
+                whitelistCache.clear()
+            }
+        }
     }
 
     override fun getRecords(): List<Bundle> {

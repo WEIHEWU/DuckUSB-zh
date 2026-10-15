@@ -10,11 +10,10 @@ object RootTools {
     const val ADBD_PROP = "init.svc.adbd"
     const val ADBD_SAFE = "stopped"
 
-    private const val BASE_MASK = "$USB_PROP=$USB_SAFE $ADBD_PROP=$ADBD_SAFE"
-    private const val USB_STATE_MASK = "sys.usb.config=mtp sys.usb.state=mtp"
-
-    private fun maskList(includeUsbState: Boolean): String =
-        if (includeUsbState) "$BASE_MASK $USB_STATE_MASK" else BASE_MASK
+    // sys.usb.config stays out of this: init's "on property:sys.usb.config=*" rules act on it
+    // and reconfigure the gadget. sys.usb.state has no init consumer, and masking it keeps the
+    // three readable values consistent, because a half-masked set is its own tell.
+    private const val BASE_MASK = "$USB_PROP=$USB_SAFE $ADBD_PROP=$ADBD_SAFE sys.usb.state=mtp"
 
     init {
         Shell.enableVerboseLogging = false
@@ -90,11 +89,11 @@ object RootTools {
      * The script re-applies for the life of the boot rather than a fixed number of passes,
      * because init rewrites init.svc.* whenever the service changes state.
      */
-    fun setPropMask(enabled: Boolean, includeUsbState: Boolean = false): Boolean {
+    fun setPropMask(enabled: Boolean): Boolean {
         if (!enabled) {
             return exec("rm -f $BOOT_SCRIPT").isSuccess
         }
-        val masked = maskList(includeUsbState)
+        val masked = BASE_MASK
         val script = """
             mkdir -p /data/adb/service.d
             cat > $BOOT_SCRIPT <<'DUCKUSB_BOOT'
@@ -119,12 +118,12 @@ object RootTools {
             chmod 0755 $BOOT_SCRIPT
         """.trimIndent()
         val written = exec(script).isSuccess
-        applyNow(includeUsbState)
+        applyNow()
         return written
     }
 
-    fun applyNow(includeUsbState: Boolean = false): Boolean {
-        val masked = maskList(includeUsbState)
+    fun applyNow(): Boolean {
+        val masked = BASE_MASK
         val script = """
             RP=
             for candidate in /data/adb/ksu/bin/resetprop /data/adb/ap/bin/resetprop /data/adb/magisk/resetprop; do
@@ -157,7 +156,6 @@ object RootTools {
         [ "${'$'}(getprop $ADBD_PROP)" = "$ADBD_SAFE" ] && "${'$'}RP" -n $ADBD_PROP running
         TRUE_CFG=${'$'}(cat /sys/class/android_usb/android0/functions 2>/dev/null)
         [ -z "${'$'}TRUE_CFG" ] && TRUE_CFG=mtp,adb
-        [ "${'$'}(getprop sys.usb.config)" = "mtp" ] && "${'$'}RP" -n sys.usb.config "${'$'}TRUE_CFG"
         [ "${'$'}(getprop sys.usb.state)" = "mtp" ] && "${'$'}RP" -n sys.usb.state "${'$'}TRUE_CFG"
         exit 0
         """.trimIndent()

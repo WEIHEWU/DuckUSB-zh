@@ -234,14 +234,14 @@ class MainActivity : AppCompatActivity() {
         col.addView(ui.thinDivider())
         col.addView(ui.toggleRow(
             DuckUi.Icons.tag, "屏蔽 USB 配置属性",
-            "使属性区中的 persist.sys.usb.config 显示为 mtp，init.svc.adbd 显示为 stopped，让所有读取途径保持一致。adbd 仍保持运行。重启后恢复。需要 Root 权限。",
+            "使属性区中的 persist.sys.usb.config 与 sys.usb.state 显示为 mtp，init.svc.adbd 显示为 stopped，让所有读取途径保持一致。sys.usb.config 保持原样，以便 adbd 正常运行。重启后恢复。需要 Root 权限。",
             propMaskInstalled,
         ) { wanted ->
             propMaskInstalled = wanted
             setFlag(Config.KEY_MASK_USB_PROP, wanted)
             renderContent()
             background {
-                val ok = if (wanted) RootTools.setPropMask(true, flag(Config.KEY_MASK_USB_STATE, false)) else {
+                val ok = if (wanted) RootTools.setPropMask(true) else {
                     RootTools.setPropMask(false)
                     RootTools.restoreProp()
                 }
@@ -256,20 +256,6 @@ class MainActivity : AppCompatActivity() {
                     }
                     reload()
                 }
-            }
-        })
-        col.addView(ui.thinDivider())
-        col.addView(ui.toggleRow(
-            DuckUi.Icons.allApps, "屏蔽 USB 功能列表",
-            "sys.usb.config 与 sys.usb.state 将读取为 mtp，隐藏 adb 功能本身，防御直接读取这俩属性的检测。system_server 自带的 USB 管理服务也会受影响，除非确有需要否则建议保持关闭。",
-            flag(Config.KEY_MASK_USB_STATE, false), rootAvailable,
-        ) { wanted ->
-            setFlag(Config.KEY_MASK_USB_STATE, wanted)
-            renderContent()
-            background {
-                if (propMaskInstalled) RootTools.setPropMask(true, wanted)
-                if (!wanted) RootTools.restoreProp()
-                runOnUiThread { reload() }
             }
         })
         col.addView(ui.thinDivider())

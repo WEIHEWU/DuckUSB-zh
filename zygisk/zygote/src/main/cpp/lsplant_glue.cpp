@@ -1,6 +1,7 @@
 #include <jni.h>
 
 #include <atomic>
+#include <mutex>
 #include <string>
 
 #include <dobby.h>
@@ -8,6 +9,7 @@
 
 #include "elf_img.h"
 #include "Logger.h"
+#include "self_pin.h"
 
 static ElfImg *gArt = nullptr;
 static std::atomic<bool> gReady{false};
@@ -29,6 +31,17 @@ extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_strawing_duckusb_zygote_hook_Native_initHooking(JNIEnv *env, jobject) {
     if (gReady.load(std::memory_order_acquire)) return JNI_TRUE;
+
+    static std::mutex init_lock;
+    std::lock_guard<std::mutex> guard(init_lock);
+    if (gReady.load(std::memory_order_relaxed)) return JNI_TRUE;
+
+    // Not fatal: a failed pin only risks a dangling hook if this image is unloaded, and the
+    // processes LSPlant runs in keep the module classloader for their lifetime. Refusing here
+    // took framework mode down in system_server, where dlopen of the module path is refused.
+    if (!pin_self()) {
+        LOGD("module image could not be pinned (%s); continuing", pin_self_error());
+    }
 
     if (gArt == nullptr) gArt = new ElfImg("libart.so");
     if (!gArt->valid()) {

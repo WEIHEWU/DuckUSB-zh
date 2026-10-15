@@ -327,7 +327,7 @@ class MainActivity : AppCompatActivity() {
         col.addView(ui.thinDivider())
         col.addView(ui.toggleRow(
             DuckUi.Icons.tag, "屏蔽 USB 配置属性",
-            "使属性区中的 persist.sys.usb.config 显示为 mtp，init.svc.adbd 显示为 stopped，让所有读取途径保持一致。adbd 仍保持运行。重启后恢复。",
+            "使属性区中的 persist.sys.usb.config 与 sys.usb.state 显示为 mtp，init.svc.adbd 显示为 stopped，让所有读取途径保持一致。sys.usb.config 保持原样，以便 adbd 正常运行。重启后恢复。",
             config.spoofProps,
         ) {
             config.spoofProps = it
@@ -337,7 +337,7 @@ class MainActivity : AppCompatActivity() {
         col.addView(ui.thinDivider())
         col.addView(ui.toggleRow(
             DuckUi.Icons.allApps, "屏蔽 USB 功能列表",
-            "仅在作用域应用内通过 libc 读取 Hook 将 sys.usb.config 和 sys.usb.state 伪装为 mtp。真实属性值不受影响，因此 USB adb 功能正常工作。代价：Hook 仅存在于注入进程中，开启此项会将目标应用加入注入列表。单开框架模式则完全不注入目标进程。",
+            "仅在作用域应用内通过 libc 读取 Hook 将 sys.usb.config 伪装为 mtp。这是唯一无法全局屏蔽的 USB 属性，因为 init 会根据它重新配置 USB gadget；其它属性已通过上方的开关全局屏蔽。代价：开启此项会注入目标应用并在其 libc 中留下 inline patch，可能被内存扫描检测到。除非应用直接检测 sys.usb.config，否则建议保持关闭。",
             config.spoofUsbState,
         ) {
             config.spoofUsbState = it

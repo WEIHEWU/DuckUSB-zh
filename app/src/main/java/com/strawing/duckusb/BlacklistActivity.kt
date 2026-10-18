@@ -25,7 +25,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.R as MR
 import com.strawing.duckusb.service.DuckServiceClient
 
-class WhitelistActivity : AppCompatActivity() {
+class BlacklistActivity : AppCompatActivity() {
 
     private data class Entry(val label: String, val pkg: String, val system: Boolean)
 
@@ -37,9 +37,10 @@ class WhitelistActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        title = "黑名单应用管理"
 
         prefs = resolvePrefs()
-        prefs.getStringSet(Config.KEY_WHITELIST, null)?.let { selected.addAll(it) }
+        prefs.getStringSet(Config.KEY_BLACKLIST, null)?.let { selected.addAll(it) }
 
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -47,7 +48,7 @@ class WhitelistActivity : AppCompatActivity() {
         }
 
         container.addView(TextView(this).apply {
-            text = "勾选的应用将加入白名单，正常读取真实的 USB 调试状态，不对其进行伪装隐藏。未勾选的应用仍将被伪装为关闭。"
+            text = "勾选的应用将加入黑名单，对其隐藏 USB 调试与开发者选项（读取结果为关闭）。未勾选的应用不受影响，正常读取真实的系统状态。无需向目标应用注入代码，伪装统一在 system_server 中进行。"
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
             setTextColor(attr(MR.attr.colorOnSurfaceVariant))
             setPadding(dp(4), 0, dp(4), dp(8))
@@ -121,7 +122,7 @@ class WhitelistActivity : AppCompatActivity() {
     }
 
     private fun save() {
-        prefs.edit()?.putStringSet(Config.KEY_WHITELIST, selected)?.apply()
+        prefs.edit()?.putStringSet(Config.KEY_BLACKLIST, selected)?.apply()
         Thread {
             DuckServiceClient.pushConfig(
                 this,
@@ -171,30 +172,30 @@ class WhitelistActivity : AppCompatActivity() {
         }
 
         private fun buildRow(): LinearLayout {
-            val row = LinearLayout(this@WhitelistActivity).apply {
+            val row = LinearLayout(this@BlacklistActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(8), dp(10), dp(8), dp(10))
             }
-            row.addView(ImageView(this@WhitelistActivity).apply {
+            row.addView(ImageView(this@BlacklistActivity).apply {
                 layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
             })
-            val text = LinearLayout(this@WhitelistActivity).apply {
+            val text = LinearLayout(this@BlacklistActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(12), 0, dp(12), 0)
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
-            text.addView(TextView(this@WhitelistActivity).apply {
+            text.addView(TextView(this@BlacklistActivity).apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 setTypeface(typeface, Typeface.BOLD)
                 setTextColor(attr(MR.attr.colorOnSurface))
             })
-            text.addView(TextView(this@WhitelistActivity).apply {
+            text.addView(TextView(this@BlacklistActivity).apply {
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 setTextColor(attr(MR.attr.colorOnSurfaceVariant))
             })
             row.addView(text)
-            row.addView(CheckBox(this@WhitelistActivity))
+            row.addView(CheckBox(this@BlacklistActivity))
             return row
         }
     }

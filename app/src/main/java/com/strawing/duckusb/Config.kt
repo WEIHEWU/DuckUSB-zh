@@ -16,8 +16,8 @@ object Config {
     /** Spoof adb_enabled / adb_wifi_enabled / development_settings_enabled to scoped apps. */
     const val KEY_SPOOF = "spoof_enabled"
 
-    /** Packages exempted from spoofing (they will see the true USB debugging state). */
-    const val KEY_WHITELIST = "whitelist_packages"
+    /** Packages targeted for spoofing in pure blacklist mode. */
+    const val KEY_BLACKLIST = "blacklist_packages"
 
     /**
      * Framework mode — EXPERIMENTAL, default OFF. A single hook in System Framework

@@ -35,7 +35,7 @@ object DuckServiceClient {
         paused: Boolean,
         spoofSettings: Boolean,
         hideNotif: Boolean,
-        whitelist: ArrayList<String>? = null,
+        blacklist: ArrayList<String>? = null,
     ) {
         val svc = get(context) ?: return
         runCatching {
@@ -43,8 +43,8 @@ object DuckServiceClient {
                 putBoolean("paused", paused)
                 putBoolean("spoofSettings", spoofSettings)
                 putBoolean("hideNotif", hideNotif)
-                if (whitelist != null) {
-                    putStringArrayList("whitelist", whitelist)
+                if (blacklist != null) {
+                    putStringArrayList("blacklist", blacklist)
                 }
             })
         }

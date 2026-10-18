@@ -1,13 +1,14 @@
-# DuckUSB (中文增强版 / Whitelist Edition)
+# DuckUSB (中文黑名单增强版 / Blacklist Edition)
 
-> 本仓库是基于上游 [Bouteillepleine/DuckUSB](https://github.com/Bouteillepleine/DuckUSB) 的中文增强分支，新增了 **应用白名单支持** 与 **完整简体中文本地化**。
+> 本仓库是基于上游 [Bouteillepleine/DuckUSB](https://github.com/Bouteillepleine/DuckUSB) 的中文增强分支，重构为 **纯黑名单模式**，并包含 **完整简体中文本地化**。
 
 ## ✨ 分支特色 (Features)
 
 * 🇨🇳 **完整简体中文界面**：包括 Xposed 模块、Zygisk 管理器与所有配置项说明。
-* 🛡️ **应用白名单支持 (Xposed 模块)**：
-  * 支持自定义白名单，允许特定应用（如 **Shizuku**、**MT 管理器**、**各类开发调试工具**）获取真实的 USB 调试及开发者选项状态。
-  * 拦截与白名单逻辑直接在 `system_server` 中执行，无需向目标应用注入代码；配置修改通过 IPC 实时生效，**无需重启手机**。
+* 🎯 **纯黑名单模式 (Xposed 模块)**：
+  * **默认不隐藏**：未勾选的应用不受任何干扰，正常感知真实的 USB 调试及开发者选项状态。
+  * **精准定向隐藏**：仅对用户在黑名单中勾选的目标应用（如银行、打卡、游戏等检测类软件）隐藏 USB 调试。
+  * **免重启即时生效**：拦截判定统一在 `system_server` 中执行，无需向目标应用注入代码；黑名单修改通过 IPC 实时同步，**即刻生效，无需重启设备**。
 * ⚡ **同步官方最新核心**：已同步上游最新改进（Xposed v2.1.7 / Zygisk v2.1.8），包括优化的 USB 属性屏蔽与强化的 Zygisk 注入引擎。
 * 📦 **开箱即用构建**：已内置开发签名密钥及通用 Gradle 配置，一键编译即可生成带有效签名的安装包。
 

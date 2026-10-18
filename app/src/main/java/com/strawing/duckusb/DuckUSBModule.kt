@@ -208,7 +208,7 @@ class DuckUSBModule : XposedModule() {
                                 spoofSettings = spoofOn()
                                 hideNotif = hideNotifOn()
                                 runCatching {
-                                    setInitialWhitelist(prefs.getStringSet(Config.KEY_WHITELIST, null))
+                                    setInitialBlacklist(prefs.getStringSet(Config.KEY_BLACKLIST, null))
                                 }
                             }
                         }
@@ -311,9 +311,10 @@ class DuckUSBModule : XposedModule() {
         if (uid % 100000 < FIRST_APP_UID) return false
         service?.callerAppId?.let { if (it >= 0 && uid % 100000 == it) return false }
         if (service?.isSpared(uid) == true) return false
-        if (service?.isWhitelisted(uid) == true) return false
         if (service?.paused ?: pausedOn()) return false
-        return service?.spoofSettings ?: spoofOn()
+        if (!(service?.spoofSettings ?: spoofOn())) return false
+        // 纯黑名单模式：只有黑名单中的目标应用才伪装，其余放行
+        return service?.isBlacklisted(uid) == true
     }
 
     /** The "after" half of the framework call hook: rewrite the value the provider returned. */
@@ -348,10 +349,11 @@ class DuckUSBModule : XposedModule() {
         // app uids, so the uid<10000 rule above does not cover them, and spoofing them at boot
         // leaves USB stuck on charge-only.
         if (service?.isSpared(uid) == true) return
-        if (service?.isWhitelisted(uid) == true) return
         if (service?.paused ?: pausedOn()) return
         // Live config from the service when it's up (a volatile read), else the prefs path.
         if (!(service?.spoofSettings ?: spoofOn())) return
+        // 纯黑名单模式：未加入黑名单的应用直接放行，返回真实系统状态
+        if (service?.isBlacklisted(uid) != true) return
 
         val bundle = result as? Bundle ?: return
         if (listing) {

@@ -125,13 +125,13 @@ class MainActivity : AppCompatActivity() {
     private fun setFlag(key: String, value: Boolean) {
         prefs.edit()?.putBoolean(key, value)?.apply()
         background {
-            val wl = prefs.getStringSet(Config.KEY_WHITELIST, null)?.let { ArrayList(it) }
+            val bl = prefs.getStringSet(Config.KEY_BLACKLIST, null)?.let { ArrayList(it) }
             DuckServiceClient.pushConfig(
                 this@MainActivity,
                 flag(Config.KEY_PAUSED, false),
                 flag(Config.KEY_SPOOF, true),
                 flag(Config.KEY_HIDE_NOTIF, true),
-                wl,
+                bl,
             )
         }
     }
@@ -297,16 +297,16 @@ class MainActivity : AppCompatActivity() {
     private fun coverageCard(): View {
         val card = ui.outlinedCard()
         val col = ui.column(16, 16)
-        val wlCount = prefs.getStringSet(Config.KEY_WHITELIST, null)?.size ?: 0
+        val blCount = prefs.getStringSet(Config.KEY_BLACKLIST, null)?.size ?: 0
         col.addView(ui.bodyText(
-            if (wlCount > 0) {
-                "当前已设置 $wlCount 个白名单应用（这些应用将正常读取到真实的 USB 调试状态）。其余未在白名单中的所有应用读取 USB 调试均为关闭。"
+            if (blCount > 0) {
+                "当前处于纯黑名单模式：已添加 $blCount 个黑名单目标应用（仅对这些应用隐藏 USB 调试与开发者选项）。未加入黑名单的应用不受影响，正常读取真实系统状态。"
             } else {
-                "默认对设备上的所有第三方应用进行伪装（读取 USB 调试均为关闭）。如果你有需要正常使用 USB 调试的开发/调试/管理工具，可在下方添加到白名单。"
+                "当前处于纯黑名单模式：默认不对任何应用隐藏 USB 调试。请在下方设置需要屏蔽 USB 调试的目标应用（如银行、游戏、打卡等检测类软件）。"
             }
         ))
-        col.addView(ui.linkRow(if (wlCount > 0) "管理白名单应用 ($wlCount 个应用不伪装)" else "设置白名单应用（不隐藏 USB 调试）") {
-            startActivity(Intent(this, WhitelistActivity::class.java))
+        col.addView(ui.linkRow(if (blCount > 0) "管理黑名单目标 ($blCount 个应用已屏蔽)" else "设置黑名单目标（勾选屏蔽 USB 调试）") {
+            startActivity(Intent(this, BlacklistActivity::class.java))
         })
         if (systemScoped() == false) {
             col.addView(ui.noteRow(

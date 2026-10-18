@@ -305,3 +305,49 @@ jobs:
               --title "Zygisk ${VERSION}" \
               "${NOTES[@]}"
           fi
+
+  release-latest:
+    # Automatically publishes or updates the latest release on GitHub whenever code is pushed.
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: DuckUSB-release
+
+      - name: Publish or update Latest Release on GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="latest"
+          ASSETS=()
+          [ -f DuckUSB-xposed.apk ] && ASSETS+=(DuckUSB-xposed.apk)
+          [ -f DuckUSB-zygisk-manager.apk ] && ASSETS+=(DuckUSB-zygisk-manager.apk)
+          for z in DuckUSB-Zygisk-*.zip; do
+            [ -f "$z" ] && ASSETS+=("$z")
+          done
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Updating existing $TAG release..."
+            gh release upload "$TAG" "${ASSETS[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            echo "Creating $TAG release..."
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "DuckUSB 纯黑名单汉化版 (Latest Release)" \
+              --notes "### DuckUSB 纯黑名单汉化版最新构建
+
+- **Xposed 模块 (推荐)**：\`DuckUSB-xposed.apk\`
+- **Zygisk 管理器**：\`DuckUSB-zygisk-manager.apk\`
+- **Zygisk 模块刷机包**：\`DuckUSB-Zygisk-*.zip\`
+
+#### 特性说明
+- **纯黑名单模式**：默认放行所有应用，仅对勾选的目标应用隐藏 USB 调试与开发者选项。
+- **免重启即时生效**：判定逻辑在 \`system_server\` 中执行，配置修改即刻生效，无需向目标 App 注入代码。
+- **完整简体中文本地化**。"
+          fi

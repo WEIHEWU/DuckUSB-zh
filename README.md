@@ -12,6 +12,14 @@
 * ⚡ **同步官方最新核心**：已同步上游最新改进（Xposed v2.1.7 / Zygisk v2.1.8），包括优化的 USB 属性屏蔽与强化的 Zygisk 注入引擎。
 * 📦 **开箱即用构建**：已内置开发签名密钥及通用 Gradle 配置，一键编译即可生成带有效签名的安装包。
 
+## 📥 最新预编译 APK 下载 (Direct GitHub Downloads)
+
+| 版本 | 说明 | 下载直达 |
+| :--- | :--- | :--- |
+| **Xposed 模块 (推荐)** | v2.1.7 纯黑名单汉化版 | 🔗 [下载 DuckUSB-v2.1.7-blacklist-zh.apk](https://github.com/WEIHEWU/DuckUSB-zh/raw/main/release/DuckUSB-v2.1.7-blacklist-zh.apk) |
+| **Zygisk 管理器** | v2.1.8 汉化版 | 🔗 [下载 DuckUSB-Zygisk-Manager-v2.1.8-zh.apk](https://github.com/WEIHEWU/DuckUSB-zh/raw/main/release/DuckUSB-Zygisk-Manager-v2.1.8-zh.apk) |
+| **GitHub Releases 页面** | 官方发行版与历史版本 | 📦 [前往 Releases 查看发布包](https://github.com/WEIHEWU/DuckUSB-zh/releases) |
+
 ---
 
 # Original DuckUSB Introduction

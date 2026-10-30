@@ -168,8 +168,12 @@ jobs:
       - name: Stage artifacts
         run: |
           set -euo pipefail
+          XPOSED_VER=$(grep -oE 'versionName *= *"[^"]+"' app/build.gradle.kts | head -1 | cut -d'"' -f2)
+          ZYGISK_VER=$(grep -oE 'moduleVersionName by extra\("[^"]+"\)' build.gradle.kts | head -1 | cut -d'"' -f2 || echo "2.1.9")
           cp app/build/outputs/apk/release/app-release.apk ./DuckUSB-xposed.apk
+          cp app/build/outputs/apk/release/app-release.apk "./DuckUSB-v${XPOSED_VER}-blacklist-zh.apk"
           cp zygisk/app/build/outputs/apk/release/app-release.apk ./DuckUSB-zygisk-manager.apk
+          cp zygisk/app/build/outputs/apk/release/app-release.apk "./DuckUSB-Zygisk-Manager-v${ZYGISK_VER}-zh.apk"
           cp zygisk/zygote/build/outputs/magisk/release/*.zip ./
           ls -l ./*.apk ./*.zip
 
@@ -210,9 +214,8 @@ jobs:
         with:
           name: DuckUSB-release
           path: |
-            DuckUSB-xposed.apk
-            DuckUSB-zygisk-manager.apk
-            DuckUSB-Zygisk-*.zip
+            *.apk
+            *.zip
             update.json
           if-no-files-found: warn
 
@@ -350,31 +353,9 @@ jobs:
           set -euo pipefail
           TAG="latest"
           ASSETS=()
-          [ -f DuckUSB-xposed.apk ] && ASSETS+=(DuckUSB-xposed.apk)
-          [ -f DuckUSB-zygisk-manager.apk ] && ASSETS+=(DuckUSB-zygisk-manager.apk)
-          for z in DuckUSB-Zygisk-*.zip; do
-            [ -f "$z" ] && ASSETS+=("$z")
+          for f in *.apk *.zip; do
+            [ -f "$f" ] && ASSETS+=("$f")
           done
-
-          # Also create descriptive versioned copies for convenient downloading
-          if [ -f DuckUSB-xposed.apk ]; then
-            VER=$(unzip -p DuckUSB-xposed.apk META-INF/xposed/module.prop 2>/dev/null | sed -n 's/^version=//p' | tr -d '\r' || echo "")
-            if [ -n "$VER" ]; then
-              cp DuckUSB-xposed.apk "DuckUSB-v${VER}-blacklist-zh.apk"
-              ASSETS+=("DuckUSB-v${VER}-blacklist-zh.apk")
-            fi
-          fi
-          if [ -f DuckUSB-zygisk-manager.apk ]; then
-            for z in DuckUSB-Zygisk-*.zip; do
-              if [ -f "$z" ]; then
-                ZVER=$(echo "$z" | sed -n 's/DuckUSB-Zygisk-\(.*\)-release\.zip/\1/p')
-                if [ -n "$ZVER" ]; then
-                  cp DuckUSB-zygisk-manager.apk "DuckUSB-Zygisk-Manager-v${ZVER}-zh.apk"
-                  ASSETS+=("DuckUSB-Zygisk-Manager-v${ZVER}-zh.apk")
-                fi
-              fi
-            done
-          fi
 
           printf "%s\n" \
             "### DuckUSB 纯黑名单汉化版最新构建" \

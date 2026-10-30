@@ -59,6 +59,7 @@ jobs:
         # If secrets are missing in forks, generate a fallback keystore so release artifacts are signed and verification passes.
         env:
           KEYSTORE_B64: ${{ secrets.DUCKUSB_KEYSTORE_BASE64 }}
+          LEGACY_KEYSTORE_B64: ${{ secrets.DUCKUSB_LEGACY_KEYSTORE_BASE64 }}
           DUCKUSB_STORE_PASSWORD: ${{ secrets.DUCKUSB_STORE_PASSWORD }}
           DUCKUSB_KEY_ALIAS: ${{ secrets.DUCKUSB_KEY_ALIAS }}
           DUCKUSB_KEY_PASSWORD: ${{ secrets.DUCKUSB_KEY_PASSWORD }}
@@ -78,12 +79,35 @@ jobs:
             echo "DUCKUSB_KEY_ALIAS=duckusb" >> "$GITHUB_ENV"
             echo "DUCKUSB_KEY_PASSWORD=duckusb" >> "$GITHUB_ENV"
           fi
+          if [ -n "$LEGACY_KEYSTORE_B64" ]; then
+            echo "$LEGACY_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/duckusb-legacy.jks"
+            echo "DUCKUSB_LEGACY_STORE_FILE=$RUNNER_TEMP/duckusb-legacy.jks" >> "$GITHUB_ENV"
+            echo "legacy keystore decoded"
+          fi
 
       - name: Build
         run: |
           chmod +x gradlew
           ./gradlew :app:assembleRelease :zygisk:app:assembleRelease \
             :zygisk:zygote:assembleRelease --no-daemon --stacktrace
+
+      - name: Sign with the rotation lineage
+        # The original 2026 key leaked with its password in git history. duckusb.lineage
+        # rotates to the current key: Android 9+ reads the v3 block and the new key, Android 8
+        # reads the v2 block, which apksigner still has to produce with the old key. Without
+        # the lineage an installed build would refuse the update.
+        if: env.DUCKUSB_STORE_FILE != '' && env.DUCKUSB_LEGACY_STORE_FILE != ''
+        env:
+          DUCKUSB_STORE_PASSWORD: ${{ secrets.DUCKUSB_STORE_PASSWORD }}
+          DUCKUSB_KEY_ALIAS: ${{ secrets.DUCKUSB_KEY_ALIAS }}
+          DUCKUSB_KEY_PASSWORD: ${{ secrets.DUCKUSB_KEY_PASSWORD }}
+          DUCKUSB_LEGACY_STORE_PASSWORD: ${{ secrets.DUCKUSB_LEGACY_STORE_PASSWORD }}
+          DUCKUSB_LEGACY_KEY_ALIAS: ${{ secrets.DUCKUSB_LEGACY_KEY_ALIAS }}
+          DUCKUSB_LEGACY_KEY_PASSWORD: ${{ secrets.DUCKUSB_LEGACY_KEY_PASSWORD }}
+        run: |
+          chmod +x sign.sh
+          ./sign.sh app/build/outputs/apk/release/app-release.apk \
+                    zygisk/app/build/outputs/apk/release/app-release.apk
 
       - name: Verify the Xposed APK
         # These files ARE the module as far as the framework is concerned: lose one and the

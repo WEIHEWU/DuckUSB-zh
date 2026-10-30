@@ -356,22 +356,52 @@ jobs:
             [ -f "$z" ] && ASSETS+=("$z")
           done
 
+          # Also create descriptive versioned copies for convenient downloading
+          if [ -f DuckUSB-xposed.apk ]; then
+            VER=$(unzip -p DuckUSB-xposed.apk META-INF/xposed/module.prop 2>/dev/null | sed -n 's/^version=//p' | tr -d '\r' || echo "")
+            if [ -n "$VER" ]; then
+              cp DuckUSB-xposed.apk "DuckUSB-v${VER}-blacklist-zh.apk"
+              ASSETS+=("DuckUSB-v${VER}-blacklist-zh.apk")
+            fi
+          fi
+          if [ -f DuckUSB-zygisk-manager.apk ]; then
+            for z in DuckUSB-Zygisk-*.zip; do
+              if [ -f "$z" ]; then
+                ZVER=$(echo "$z" | sed -n 's/DuckUSB-Zygisk-\(.*\)-release\.zip/\1/p')
+                if [ -n "$ZVER" ]; then
+                  cp DuckUSB-zygisk-manager.apk "DuckUSB-Zygisk-Manager-v${ZVER}-zh.apk"
+                  ASSETS+=("DuckUSB-Zygisk-Manager-v${ZVER}-zh.apk")
+                fi
+              fi
+            done
+          fi
+
+          printf "%s\n" \
+            "### DuckUSB 纯黑名单汉化版最新构建" \
+            "" \
+            "- **Xposed 模块 (推荐)**：\`DuckUSB-xposed.apk\` (或 \`DuckUSB-v2.1.8-blacklist-zh.apk\`)" \
+            "- **Zygisk 管理器**：\`DuckUSB-zygisk-manager.apk\` (或 \`DuckUSB-Zygisk-Manager-v2.1.9-zh.apk\`)" \
+            "- **Zygisk 模块刷机包**：\`DuckUSB-Zygisk-*.zip\`" \
+            "" \
+            "#### 特性说明" \
+            "- **纯黑名单模式**：默认放行所有应用，仅对勾选的目标应用隐藏 USB 调试与开发者选项。" \
+            "- **免重启即时生效**：判定逻辑在 \`system_server\` 中执行，配置修改即刻生效，无需向目标 App 注入代码。" \
+            "- **完整简体中文本地化**。" \
+            > release_notes.md
+
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Updating existing $TAG release..."
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "DuckUSB 纯黑名单汉化版 (Latest Release)" \
+              --notes-file release_notes.md
             gh release upload "$TAG" "${ASSETS[@]}" --repo "$GITHUB_REPOSITORY" --clobber
           else
             echo "Creating $TAG release..."
             gh release create "$TAG" "${ASSETS[@]}" \
               --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
               --title "DuckUSB 纯黑名单汉化版 (Latest Release)" \
-              --notes "### DuckUSB 纯黑名单汉化版最新构建
-
-- **Xposed 模块 (推荐)**：\`DuckUSB-xposed.apk\`
-- **Zygisk 管理器**：\`DuckUSB-zygisk-manager.apk\`
-- **Zygisk 模块刷机包**：\`DuckUSB-Zygisk-*.zip\`
-
-#### 特性说明
-- **纯黑名单模式**：默认放行所有应用，仅对勾选的目标应用隐藏 USB 调试与开发者选项。
-- **免重启即时生效**：判定逻辑在 \`system_server\` 中执行，配置修改即刻生效，无需向目标 App 注入代码。
-- **完整简体中文本地化**。"
+              --notes-file release_notes.md
           fi

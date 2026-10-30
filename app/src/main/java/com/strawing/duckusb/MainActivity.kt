@@ -168,27 +168,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun statusCard(): View {
+        val live = frameworkLive()
         val paused = flag(Config.KEY_PAUSED, false)
-        val spoofing = frameworkLive() && !paused && flag(Config.KEY_SPOOF, true)
+        val spoofing = live && !paused && flag(Config.KEY_SPOOF, true)
         val health = when {
+            !live -> Health.BAD
             paused -> Health.PAUSED
             spoofing -> Health.GOOD
             else -> Health.BAD
         }
         val title = when {
-            !frameworkLive() -> "未激活"
+            !live -> "未激活"
             paused -> "已暂停"
             !flag(Config.KEY_SPOOF, true) -> "设置伪装已关闭"
             else -> "已激活 — 框架模式"
         }
         val detail = when {
-            !frameworkLive() -> "请在 LSPosed 中启用 DuckUSB，勾选「系统框架 (System Framework)」作用域，然后重启设备。"
-            paused -> "所有项恢复读取真实值。Hook 仍保持加载，取消暂停后立即恢复生效。"
+            !live -> "请在 LSPosed 中启用 DuckUSB，勾选「系统框架 (System Framework)」作用域，然后重启设备。"
+            paused -> "所有项恢复读取真实值。Hook 仍保持加载，重新启用后立即恢复生效。"
             !flag(Config.KEY_SPOOF, true) -> "Hook 已就绪，但设置伪装开关已关闭。"
             else -> "Hook 在 system_server 中正常运行，已覆盖所有应用"
         }
-        return ui.heroCard(title, detail, health, "暂停", paused, true) { checked ->
-            setFlag(Config.KEY_PAUSED, checked)
+        val active = live && !paused
+        return ui.heroCard(title, detail, health, "启用", active, live) { checked ->
+            setFlag(Config.KEY_PAUSED, !checked)
             renderContent()
         }
     }

@@ -169,7 +169,7 @@ class MainActivity : AppCompatActivity() {
             !rootAvailable -> "请在 Root 管理器中授予 Root 权限，以便应用读写模块配置。"
             !moduleInstalled -> "请在 Magisk / KernelSU 中刷入模块 zip 包，然后重启设备。"
             hooksKilled -> "紧急开关或开机看门狗禁用了所有 Hook。请在下方重新启用，然后重启。"
-            config.paused -> "所有配置项恢复读取真实值。Hook 将保持加载直至下次重启。"
+            config.paused -> "所有配置项恢复读取真实值。Hook 仍保持加载，重新启用后立即恢复生效。"
             !config.hookSystemServer || !config.frameworkMode -> "当前未生效伪装。请在下方开启框架模式，然后重启。"
             !serviceLive() -> "框架模式已开启，但 system_server 中的 Hook 尚未就绪。重启前伪装不会生效。"
             !config.spoofSettings -> "Hook 已就绪，但设置伪装开关已被关闭。"
@@ -177,8 +177,10 @@ class MainActivity : AppCompatActivity() {
             config.targets.isEmpty() -> "Hook 已就绪，但未选择目标应用。请在「作用域」中勾选。"
             else -> "Hook 在 system_server 中正常运行，已覆盖 ${config.targets.size} 个应用"
         }
-        return ui.heroCard(title, detail, health, "暂停", config.paused, moduleInstalled) { checked ->
-            config.paused = checked
+        val canToggle = moduleInstalled && rootAvailable && !hooksKilled
+        val active = canToggle && !config.paused
+        return ui.heroCard(title, detail, health, "启用", active, canToggle) { checked ->
+            config.paused = !checked
             save()
             renderContent()
         }

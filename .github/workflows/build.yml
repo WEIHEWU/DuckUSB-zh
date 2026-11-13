@@ -243,6 +243,7 @@ jobs:
           VERSION="${TAG#xposed-v}"
           mv DuckUSB-xposed.apk "DuckUSB-${VERSION}.apk"
           ASSETS=("DuckUSB-${VERSION}.apk" update.json)
+          [ -f "DuckUSB-v${VERSION}-blacklist-zh.apk" ] && ASSETS+=("DuckUSB-v${VERSION}-blacklist-zh.apk")
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::warning::$TAG already exists; replacing its assets."
             gh release upload "$TAG" "${ASSETS[@]}" \
@@ -314,6 +315,7 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           VERSION="${TAG#zygisk-v}"
           ASSETS=(DuckUSB-Zygisk-*.zip DuckUSB-zygisk-manager.apk)
+          for f in DuckUSB-Zygisk-Manager-*.apk; do [ -f "$f" ] && ASSETS+=("$f"); done
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::warning::$TAG already exists; replacing its assets."
             gh release upload "$TAG" "${ASSETS[@]}" \
@@ -374,12 +376,29 @@ jobs:
             "- **完整简体中文本地化**。" \
             > release_notes.md
 
+          XPOSED_VER=$(echo "$XPOSED_APK" | sed -n 's/DuckUSB-v\([0-9.]*\)-blacklist-zh.apk/\1/p')
+          ZYGISK_VER=$(echo "$ZYGISK_APK" | sed -n 's/DuckUSB-Zygisk-Manager-v\([0-9.]*\)-zh.apk/\1/p')
+          RELEASE_TITLE="DuckUSB 纯黑名单汉化版 v${XPOSED_VER:-2.1.9} / v${ZYGISK_VER:-2.1.10} (Latest Release)"
+
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Cleaning up outdated assets from $TAG release..."
+            EXISTING_ASSETS=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' 2>/dev/null || true)
+            for old in $EXISTING_ASSETS; do
+              MATCH=0
+              for curr in "${ASSETS[@]}"; do
+                [ "$old" = "$curr" ] && MATCH=1 && break
+              done
+              if [ "$MATCH" -eq 0 ]; then
+                echo "Deleting old asset: $old"
+                gh release delete-asset "$TAG" "$old" --repo "$GITHUB_REPOSITORY" --yes || true
+              fi
+            done
+
             echo "Updating existing $TAG release..."
             gh release edit "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "DuckUSB 纯黑名单汉化版 (Latest Release)" \
+              --title "$RELEASE_TITLE" \
               --notes-file release_notes.md
             gh release upload "$TAG" "${ASSETS[@]}" --repo "$GITHUB_REPOSITORY" --clobber
           else
@@ -387,6 +406,6 @@ jobs:
             gh release create "$TAG" "${ASSETS[@]}" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
-              --title "DuckUSB 纯黑名单汉化版 (Latest Release)" \
+              --title "$RELEASE_TITLE" \
               --notes-file release_notes.md
           fi

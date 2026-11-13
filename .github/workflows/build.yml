@@ -3,7 +3,6 @@ name: Build
 on:
   push:
     branches: [ master, main, 'merge-*', 'libxposed-*' ]
-    tags: [ 'xposed-v*', 'zygisk-v*' ]
   pull_request:
   workflow_dispatch:
 
@@ -219,124 +218,8 @@ jobs:
             update.json
           if-no-files-found: warn
 
-  release-xposed:
-    # Publishes the Xposed module only, from an xposed-v* tag. The two variants ship on their
-    # own cadence: a fix to one must not force a version bump on the other, and the in-app
-    # updater filters releases by this tag prefix.
-    if: startsWith(github.ref, 'refs/tags/xposed-v')
-    needs: build
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    steps:
-      - name: Download verified artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: DuckUSB-release
-
-      - name: Publish
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#xposed-v}"
-          mv DuckUSB-xposed.apk "DuckUSB-${VERSION}.apk"
-          ASSETS=("DuckUSB-${VERSION}.apk" update.json)
-          [ -f "DuckUSB-v${VERSION}-blacklist-zh.apk" ] && ASSETS+=("DuckUSB-v${VERSION}-blacklist-zh.apk")
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "::warning::$TAG already exists; replacing its assets."
-            gh release upload "$TAG" "${ASSETS[@]}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --clobber
-          else
-            # --generate-notes alone diffs against the newest tag of ANY variant, so an
-            # xposed release ended up comparing against the other variant's tag. Pin the
-            # start tag to the previous xposed-v* release.
-            PREV=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
-              --jq '.[].tagName' | grep "^xposed-v" | grep -v "^${TAG}$" | head -1 || true)
-            NOTES=(--generate-notes)
-            if [ -n "$PREV" ]; then NOTES+=(--notes-start-tag "$PREV"); fi
-            gh release create "$TAG" "${ASSETS[@]}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "Xposed ${VERSION}" \
-              "${NOTES[@]}"
-          fi
-
-      - name: Publish to the Xposed module repository
-        # LSPosed's manager does not read this repo. It reads
-        # Xposed-Modules-Repo/com.strawing.duckusb, a separate listing with its own releases
-        # tagged {versionCode}-{versionName}, and an APK must be attached or the module never
-        # appears. GITHUB_TOKEN cannot write across repositories, so this needs a PAT with
-        # contents:write on the listing; without the secret the step reports and skips rather
-        # than failing the release that already succeeded.
-        env:
-          GH_TOKEN: ${{ secrets.XPOSED_REPO_TOKEN }}
-          LISTING: Xposed-Modules-Repo/com.strawing.duckusb
-        run: |
-          set -euo pipefail
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::warning::No XPOSED_REPO_TOKEN secret; the LSPosed listing was not updated."
-            exit 0
-          fi
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#xposed-v}"
-          CODE=$(sed -n 's/.*"versionCode"[^0-9]*\([0-9]\+\).*/\1/p' update.json | head -1)
-          [ -n "$CODE" ] || { echo "cannot read versionCode from update.json"; exit 1; }
-          LISTING_TAG="${CODE}-${VERSION}"
-          if gh release view "$LISTING_TAG" --repo "$LISTING" >/dev/null 2>&1; then
-            echo "::warning::$LISTING already has $LISTING_TAG; leaving it alone."
-            exit 0
-          fi
-          gh release create "$LISTING_TAG" "DuckUSB-${VERSION}.apk" \
-            --repo "$LISTING" \
-            --title "${VERSION}" \
-            --notes "Release notes: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
-          echo "published $LISTING_TAG to $LISTING"
-
-  release-zygisk:
-    # Publishes the Zygisk module zip and its manager, from a zygisk-v* tag.
-    if: startsWith(github.ref, 'refs/tags/zygisk-v')
-    needs: build
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    steps:
-      - name: Download verified artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: DuckUSB-release
-
-      - name: Publish
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#zygisk-v}"
-          ASSETS=(DuckUSB-Zygisk-*.zip DuckUSB-zygisk-manager.apk)
-          for f in DuckUSB-Zygisk-Manager-*.apk; do [ -f "$f" ] && ASSETS+=("$f"); done
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "::warning::$TAG already exists; replacing its assets."
-            gh release upload "$TAG" "${ASSETS[@]}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --clobber
-          else
-            # --generate-notes alone diffs against the newest tag of ANY variant, so a
-            # zygisk release ended up comparing against the other variant's tag. Pin the
-            # start tag to the previous zygisk-v* release.
-            PREV=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
-              --jq '.[].tagName' | grep "^zygisk-v" | grep -v "^${TAG}$" | head -1 || true)
-            NOTES=(--generate-notes)
-            if [ -n "$PREV" ]; then NOTES+=(--notes-start-tag "$PREV"); fi
-            gh release create "$TAG" "${ASSETS[@]}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "Zygisk ${VERSION}" \
-              "${NOTES[@]}"
-          fi
-
   release-latest:
-    # Automatically publishes or updates the latest release on GitHub whenever code is pushed.
+    # Automatically publishes or updates the single latest unified release on GitHub.
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-24.04
@@ -354,6 +237,14 @@ jobs:
         run: |
           set -euo pipefail
           TAG="latest"
+
+          echo "Cleaning up any standalone releases..."
+          STANDALONE=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName --jq '.[] | select(.tagName != "latest") | .tagName' 2>/dev/null || true)
+          for r in $STANDALONE; do
+            echo "Deleting standalone release: $r"
+            gh release delete "$r" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          done
+
           ASSETS=()
           for f in *.apk *.zip; do
             [ -f "$f" ] && ASSETS+=("$f")
@@ -366,12 +257,13 @@ jobs:
           printf "%s\n" \
             "### DuckUSB 纯黑名单汉化版最新构建" \
             "" \
-            "- **Xposed 模块 (推荐)**：\`DuckUSB-xposed.apk\` (或 \`$XPOSED_APK\`)" \
-            "- **Zygisk 管理器**：\`DuckUSB-zygisk-manager.apk\` (或 \`$ZYGISK_APK\`)" \
+            "- **Xposed 模块 (推荐)**：\`$XPOSED_APK\`" \
+            "- **Zygisk 管理器**：\`$ZYGISK_APK\`" \
             "- **Zygisk 模块刷机包**：\`$ZYGISK_ZIP\`" \
             "" \
             "#### 特性说明" \
             "- **纯黑名单模式**：默认放行所有应用，仅对勾选的目标应用隐藏 USB 调试与开发者选项。" \
+            "- **正向逻辑开关**：主界面状态卡片优化为「启用」正向开关（开启=生效，关闭=暂停）。" \
             "- **免重启即时生效**：判定逻辑在 \`system_server\` 中执行，配置修改即刻生效，无需向目标 App 注入代码。" \
             "- **完整简体中文本地化**。" \
             > release_notes.md

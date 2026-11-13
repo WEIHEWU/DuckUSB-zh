@@ -357,12 +357,16 @@ jobs:
             [ -f "$f" ] && ASSETS+=("$f")
           done
 
+          XPOSED_APK=$(ls DuckUSB-v*-blacklist-zh.apk 2>/dev/null | head -1 || echo "DuckUSB-xposed.apk")
+          ZYGISK_APK=$(ls DuckUSB-Zygisk-Manager-v*-zh.apk 2>/dev/null | head -1 || echo "DuckUSB-zygisk-manager.apk")
+          ZYGISK_ZIP=$(ls DuckUSB-Zygisk-*.zip 2>/dev/null | head -1 || echo "DuckUSB-Zygisk.zip")
+
           printf "%s\n" \
             "### DuckUSB 纯黑名单汉化版最新构建" \
             "" \
-            "- **Xposed 模块 (推荐)**：\`DuckUSB-xposed.apk\` (或 \`DuckUSB-v2.1.8-blacklist-zh.apk\`)" \
-            "- **Zygisk 管理器**：\`DuckUSB-zygisk-manager.apk\` (或 \`DuckUSB-Zygisk-Manager-v2.1.9-zh.apk\`)" \
-            "- **Zygisk 模块刷机包**：\`DuckUSB-Zygisk-*.zip\`" \
+            "- **Xposed 模块 (推荐)**：\`DuckUSB-xposed.apk\` (或 \`$XPOSED_APK\`)" \
+            "- **Zygisk 管理器**：\`DuckUSB-zygisk-manager.apk\` (或 \`$ZYGISK_APK\`)" \
+            "- **Zygisk 模块刷机包**：\`$ZYGISK_ZIP\`" \
             "" \
             "#### 特性说明" \
             "- **纯黑名单模式**：默认放行所有应用，仅对勾选的目标应用隐藏 USB 调试与开发者选项。" \

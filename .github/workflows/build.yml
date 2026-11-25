@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Fetch native dependencies
         # Not `submodules: recursive` on the checkout: LSPlant declares two test-only
@@ -36,7 +36,7 @@ jobs:
           test -f zygisk/external/LSPlant/lsplant/src/main/jni/external/dex_builder/CMakeLists.txt
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: '21'
@@ -52,7 +52,7 @@ jobs:
             "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
 
       - name: Decode signing keystore
         # If secrets are missing in forks, generate a fallback keystore so release artifacts are signed and verification passes.
@@ -168,7 +168,7 @@ jobs:
         run: |
           set -euo pipefail
           XPOSED_VER=$(grep -oE 'versionName *= *"[^"]+"' app/build.gradle.kts | head -1 | cut -d'"' -f2)
-          ZYGISK_VER=$(grep -oE 'moduleVersionName by extra\("[^"]+"\)' build.gradle.kts | head -1 | cut -d'"' -f2 || echo "2.1.9")
+          ZYGISK_VER=$(grep -oE 'moduleVersionName by extra\("[^"]+"\)' build.gradle.kts | head -1 | cut -d'"' -f2 || echo "2.2.0")
           cp app/build/outputs/apk/release/app-release.apk ./DuckUSB-xposed.apk
           cp app/build/outputs/apk/release/app-release.apk "./DuckUSB-v${XPOSED_VER}-blacklist-zh.apk"
           cp zygisk/app/build/outputs/apk/release/app-release.apk ./DuckUSB-zygisk-manager.apk
@@ -209,7 +209,7 @@ jobs:
           python3 -c "import json;json.load(open('update.json'))" && cat update.json
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: DuckUSB-release
           path: |
@@ -227,7 +227,7 @@ jobs:
       contents: write
     steps:
       - name: Download verified artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: DuckUSB-release
 
@@ -270,7 +270,7 @@ jobs:
 
           XPOSED_VER=$(echo "$XPOSED_APK" | sed -n 's/DuckUSB-v\([0-9.]*\)-blacklist-zh.apk/\1/p')
           ZYGISK_VER=$(echo "$ZYGISK_APK" | sed -n 's/DuckUSB-Zygisk-Manager-v\([0-9.]*\)-zh.apk/\1/p')
-          RELEASE_TITLE="DuckUSB 纯黑名单汉化版 v${XPOSED_VER:-2.1.9} / v${ZYGISK_VER:-2.1.10} (Latest Release)"
+          RELEASE_TITLE="DuckUSB 纯黑名单汉化版 v${XPOSED_VER:-2.2.0} / v${ZYGISK_VER:-2.2.0} (Latest Release)"
 
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Cleaning up outdated assets from $TAG release..."

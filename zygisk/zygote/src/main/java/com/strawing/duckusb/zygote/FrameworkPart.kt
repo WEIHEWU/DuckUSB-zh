@@ -1,10 +1,14 @@
 package com.strawing.duckusb.zygote
 
+import android.content.BroadcastReceiver
 import android.content.ContentProvider
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.database.Cursor
 import android.net.Uri
 import android.os.Binder
+import android.os.Build
 import android.os.Bundle
 import android.util.SparseBooleanArray
 import com.strawing.duckusb.common.Bridge
@@ -42,6 +46,7 @@ object FrameworkPart {
 
     private val lock = Any()
     private val targetCache = SparseBooleanArray()
+    private var targetGeneration = 0
 
     fun arm() {
         val provider = runCatching { localProvider() }.getOrNull() as? ContentProvider ?: run {
@@ -55,6 +60,7 @@ object FrameworkPart {
         }
 
         service = DuckService(context!!)
+        watchPackages(context!!)
         var count = 0
         for (m in XHook.methodsOf(provider.javaClass)) {
             when {
@@ -103,6 +109,32 @@ object FrameworkPart {
         return null
     }
 
+    fun invalidateTargets() {
+        synchronized(lock) {
+            targetCache.clear()
+            targetGeneration++
+        }
+    }
+
+    private fun watchPackages(context: Context) {
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) = invalidateTargets()
+        }
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                context.registerReceiver(receiver, filter)
+            }
+        }.onFailure { Logx.e("package watcher not registered, target cache clears on config push only", it) }
+    }
+
     private fun spoofing(): Boolean {
         val config = ModuleConfig.config
         return !ModuleConfig.disabled && !config.paused &&
@@ -110,6 +142,7 @@ object FrameworkPart {
     }
 
     private fun isTarget(uid: Int): Boolean {
+        val generation = synchronized(lock) { targetGeneration }
         val config = ModuleConfig.config
         if (config.targets.isEmpty() && !config.frameworkAllApps) return false
         val appId = uid % Config.PER_USER_RANGE
@@ -128,11 +161,11 @@ object FrameworkPart {
         } ?: return false
         if (packages.any { it == Config.PKG }) return false
         if (packages.any { it in Config.SPARE_PACKAGES }) {
-            synchronized(lock) { targetCache.put(uid, false) }
+            synchronized(lock) { if (targetGeneration == generation) targetCache.put(uid, false) }
             return false
         }
         val target = if (config.frameworkAllApps) true else packages.any { config.isTarget(it) }
-        synchronized(lock) { targetCache.put(uid, target) }
+        synchronized(lock) { if (targetGeneration == generation) targetCache.put(uid, target) }
         return target
     }
 
@@ -145,9 +178,7 @@ object FrameworkPart {
     private val ownBridge = java.lang.reflect.InvocationHandler { _, _, args ->
         val uid = args?.getOrNull(0) as? Int
         val svc = service
-        if (uid == null || svc == null || svc.callerAppId < 0 ||
-            uid % Config.PER_USER_RANGE != svc.callerAppId
-        ) {
+        if (uid == null || svc == null || !svc.isManager(uid)) {
             null
         } else {
             Bundle().apply { putBinder(Bridge.KEY_BINDER, svc) }
@@ -168,9 +199,7 @@ object FrameworkPart {
         }
         val svc = service
         val uidNow = callingUid()
-        if (svc != null && uidNow != null && svc.callerAppId >= 0 &&
-            uidNow % Config.PER_USER_RANGE == svc.callerAppId && matchesBridge(f.args)
-        ) {
+        if (svc != null && uidNow != null && matchesBridge(f.args) && svc.isManager(uidNow)) {
             f.result = Bundle().apply { putBinder(Bridge.KEY_BINDER, svc) }
             return
         }
@@ -181,26 +210,41 @@ object FrameworkPart {
                 return
             }
         }
-        f.proceed()
+        try {
+            f.proceed()
+        } catch (t: Throwable) {
+            val uid = uidNow ?: throw t
+            if (!spoofing() || !isTarget(uid)) throw t
+            val (method, key) = findGetKey(f.args) ?: throw t
+            if (method !in Config.GET_METHODS || key == null) throw t
+            val spoofed = Config.SPOOF_VALUES[key] ?: throw t
+            f.result = Bundle().apply {
+                putString(Config.CALL_VALUE, spoofed)
+                putInt(Config.CALL_GENERATION_INDEX, -1)
+            }
+            service?.note(uid, key)
+            Logx.v { "framework spoofed $key for uid $uid (real read was refused)" }
+            return
+        }
         val uid = callingUid() ?: return
         runCatching { spoofCall(uid, f.args, f.result)?.let { f.result = it } }
             .onFailure { Logx.e("framework call spoof failed", it) }
         SpoofRegistry.apply(SpoofRegistry.CALL, uid, f.args, f.result)?.let { f.result = it }
     }
 
-    fun spoofCall(uid: Int, args: List<Any?>, result: Any?): Any? {
-        if (!spoofing()) return null
-        var method: String? = null
-        var key: String? = null
+    private fun findGetKey(args: List<Any?>): Pair<String, String?>? {
         for (i in args.indices) {
             val a = args[i]
             if (a is String && (a in Config.GET_METHODS || a in Config.LIST_METHODS)) {
-                method = a
-                key = args.getOrNull(i + 1) as? String
-                break
+                return a to (args.getOrNull(i + 1) as? String)
             }
         }
-        if (method == null) return null
+        return null
+    }
+
+    fun spoofCall(uid: Int, args: List<Any?>, result: Any?): Any? {
+        if (!spoofing()) return null
+        val (method, key) = findGetKey(args) ?: return null
         if (!isTarget(uid)) return null
         val bundle = result as? Bundle ?: return null
         if (method in Config.LIST_METHODS) return spoofSettingsList(uid, bundle)
@@ -249,7 +293,7 @@ object FrameworkPart {
         if (!isTarget(uid)) return null
         val cursor = result as? Cursor ?: return null
         val uri = args.firstOrNull { it is Uri } as? Uri
-        val replaced = CursorSpoof.rewrite(cursor, uri?.lastPathSegment) ?: return null
+        val replaced = CursorSpoof.rewrite(cursor, uri?.lastPathSegment, context?.contentResolver) ?: return null
         service?.note(uid, "query")
         Logx.v { "framework spoofed a cursor for uid $uid" }
         return replaced

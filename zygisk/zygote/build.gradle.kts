@@ -1,4 +1,7 @@
 import com.v7878.zygisk.gradle.ZygoteLoader
+import java.security.KeyStore
+import java.security.MessageDigest
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.agp.app)
@@ -11,6 +14,28 @@ val moduleId: String by rootProject.extra
 val moduleVersionName: String by rootProject.extra
 val moduleVersionCode: Int by rootProject.extra
 
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+val signStoreFile: String? = keystoreProperties.getProperty("storeFile") ?: System.getenv("DUCKUSB_STORE_FILE")
+val signStorePassword: String? = keystoreProperties.getProperty("storePassword") ?: System.getenv("DUCKUSB_STORE_PASSWORD")
+val signKeyAlias: String? = keystoreProperties.getProperty("keyAlias") ?: System.getenv("DUCKUSB_KEY_ALIAS")
+
+val buildManagerCertSha256: String = runCatching {
+    val path = signStoreFile ?: return@runCatching ""
+    val password = signStorePassword ?: return@runCatching ""
+    val alias = signKeyAlias ?: return@runCatching ""
+    val ksFile = rootProject.file(path)
+    if (!ksFile.exists()) return@runCatching ""
+    val ks = KeyStore.getInstance(ksFile, password.toCharArray())
+    val cert = ks.getCertificate(alias) ?: return@runCatching ""
+    MessageDigest.getInstance("SHA-256")
+        .digest(cert.encoded)
+        .joinToString("") { "%02x".format(it) }
+}.getOrDefault("")
+
 android {
     namespace = "$appPackageName.zygote"
     compileSdk = 36
@@ -22,6 +47,7 @@ android {
         targetSdk = 36
         versionCode = moduleVersionCode
         versionName = moduleVersionName
+        buildConfigField("String", "MANAGER_CERT_SHA256", "\"$buildManagerCertSha256\"")
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a")

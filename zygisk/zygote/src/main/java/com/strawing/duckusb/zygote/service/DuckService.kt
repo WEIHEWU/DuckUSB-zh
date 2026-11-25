@@ -38,8 +38,16 @@ class DuckService(private val context: Context) : IDuckService.Stub() {
     private val lock = Any()
     private val records = ArrayMap<Int, Rec>()
 
-    private val managerCert: ByteArray by lazy {
-        Config.MANAGER_CERT_SHA256.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+    private val managerCerts: List<ByteArray> by lazy {
+        listOf(
+            Config.MANAGER_CERT_SHA256,
+            BuildConfig.MANAGER_CERT_SHA256,
+            // Fork local release keystore (duckusb.jks) used for prebuilt APKs in release/
+            "e5e2d981a970e8c3a1f0748db543b86d36b710153dd4d0176b81fc21af2084f1",
+        )
+            .filter { it.length == 64 }
+            .distinct()
+            .map { hex -> hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray() }
     }
 
     fun isManager(uid: Int): Boolean {
@@ -49,7 +57,9 @@ class DuckService(private val context: Context) : IDuckService.Stub() {
             val packages = pm.getPackagesForUid(uid) ?: return false
             if (Config.PKG !in packages) return false
             BuildConfig.DEBUG ||
-                pm.hasSigningCertificate(Config.PKG, managerCert, PackageManager.CERT_INPUT_SHA256)
+                managerCerts.any {
+                    pm.hasSigningCertificate(Config.PKG, it, PackageManager.CERT_INPUT_SHA256)
+                }
         } catch (_: Throwable) {
             false
         } finally {
